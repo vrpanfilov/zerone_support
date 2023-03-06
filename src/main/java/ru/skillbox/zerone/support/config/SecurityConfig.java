@@ -43,17 +43,10 @@ public class SecurityConfig {
 //        .logoutSuccessUrl("/login")
 
         .and()
+        .authenticationProvider(daoAuthenticationProvider())
         .formLogin(Customizer.withDefaults())
         .httpBasic();
     return http.build();
-  }
-
-  @Bean
-  public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-    AuthenticationManagerBuilder authenticationManagerBuilder =
-        http.getSharedObject(AuthenticationManagerBuilder.class);
-    authenticationManagerBuilder.authenticationProvider(daoAuthenticationProvider());
-    return authenticationManagerBuilder.build();
   }
 
   @Bean
