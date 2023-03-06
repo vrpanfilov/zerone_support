@@ -1,0 +1,85 @@
+package ru.skillbox.zerone.support.service;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import ru.skillbox.zerone.support.model.dto.ChoiceDto;
+import ru.skillbox.zerone.support.model.entity.SupportRequest;
+import ru.skillbox.zerone.support.model.enumerated.SupportRequestStatus;
+import ru.skillbox.zerone.support.repository.SupportRequestRepository;
+
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ChoiceService {
+
+  private final SupportRequestRepository supportRequestRepository;
+  private final MailService mailService;
+
+  public List<ChoiceDto> getNewRequests() {
+    List<SupportRequest> requests =
+        supportRequestRepository.findAllByStatusOrderById(SupportRequestStatus.NEW);
+    List<ChoiceDto> choiceDtos = new ArrayList<>();
+    requests.forEach(request -> {
+      ChoiceDto dto = convertRequestEntityToChoiceDto(request);
+      choiceDtos.add(dto);
+    });
+    return choiceDtos;
+  }
+
+  private static ChoiceDto convertRequestEntityToChoiceDto(SupportRequest request) {
+    return ChoiceDto.builder()
+        .id(request.getId())
+        .email(request.getEmail())
+        .fullName(request.getFirstName() + ' ' + request.getLastName())
+        .message(request.getMessage())
+        .createdAt(request.getTime()
+            .format(DateTimeFormatter.ofPattern("dd.MM.yyyy hh:mm:ss")))
+        .build();
+  }
+
+  @Transactional
+  public ChoiceDto getRequestById(Long id) {
+    SupportRequest requestEntity = supportRequestRepository.findById(id)
+        .orElseThrow(EntityNotFoundException::new);
+    requestEntity.setStatus(SupportRequestStatus.IN_WORK);
+    supportRequestRepository.save(requestEntity);
+    return convertRequestEntityToChoiceDto(requestEntity);
+  }
+
+  public void processAnswer(ChoiceDto choiceDto) {
+    SupportRequest supportRequest = supportRequestRepository
+        .findById(choiceDto.getId())
+        .orElseThrow(EntityNotFoundException::new);
+    supportRequest.setStatus(SupportRequestStatus.CLOSED);
+    supportRequest.setAnswer(choiceDto.getAnswer());
+    supportRequestRepository.save(supportRequest);
+    sendEmail(supportRequest);
+  }
+
+  private void sendEmail(SupportRequest supportRequest) {
+    String message = supportRequest.getFirstName() + " " +
+        supportRequest.getLastName() + "!\n\n";
+    message += supportRequest.getAnswer() + "\n\n" +
+        "С уважением,  Служба поддержки Zerone.\n";
+
+    mailService.sendSimpleEmail(
+        supportRequest.getEmail(),
+        "Zerone Support Service",
+        message);
+  }
+
+  public void sendEmail(ChoiceDto dto) {
+    String message = dto.getFullName() + "!\n\n" +
+        "Ваша заявка от " + dto.getCreatedAt() + " принята в обработку.\n\n" +
+        "С уважением, Служба поддержки Zerone.\n";
+    mailService.sendSimpleEmail(
+        dto.getEmail(),
+        "Zerone Support Service",
+        message);
+  }
+}
