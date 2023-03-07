@@ -3,35 +3,43 @@ package ru.skillbox.zerone.support.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import ru.skillbox.zerone.support.security.CustomAuthenticationProvider;
 
 @Configuration
-@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  private final CustomAuthenticationProvider authProvider;
+  private final PasswordEncoder passwordEncoder;
+  private final UserDetailsService userDetailsService;
 
+  @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http.authorizeRequests()
-        .anyRequest()
-        .authenticated()
-        .and()
-        .httpBasic();
-    ;
+    http
+        .csrf(AbstractHttpConfigurer::disable)
+        .authorizeHttpRequests(r -> r.anyRequest().hasRole("ADMIN"))
+        .authenticationProvider(daoAuthenticationProvider())
+        .formLogin(f ->
+            f.loginPage("/login")
+                .loginProcessingUrl("/login")
+                .permitAll()
+                .successHandler((request, response, authentication) -> response.sendRedirect("/choice"))
+        )
+        .logout(LogoutConfigurer::permitAll);
     return http.build();
   }
 
   @Bean
-  public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-    AuthenticationManagerBuilder authenticationManagerBuilder =
-        http.getSharedObject(AuthenticationManagerBuilder.class);
-    authenticationManagerBuilder.authenticationProvider(authProvider);
-    return authenticationManagerBuilder.build();
+  public DaoAuthenticationProvider daoAuthenticationProvider() {
+    DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+    provider.setPasswordEncoder(passwordEncoder);
+    provider.setUserDetailsService(userDetailsService);
+    return provider;
   }
+
 }

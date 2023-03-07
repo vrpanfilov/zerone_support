@@ -1,4 +1,4 @@
-package ru.skillbox.zerone.support.security;
+package ru.skillbox.zerone.support.config;
 
 
 import org.springframework.context.annotation.Bean;
