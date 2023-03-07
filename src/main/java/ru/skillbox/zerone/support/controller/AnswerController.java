@@ -27,7 +27,8 @@ public class AnswerController {
 
   @PostMapping("/{id}")
   public String answer(@PathVariable Long id, ChoiceDto choiceDto) {
+    choiceDto.setId(id);
     choiceService.processAnswer(choiceDto);
-    return "redirect:/choice/";
+    return "redirect:/choice";
   }
 }

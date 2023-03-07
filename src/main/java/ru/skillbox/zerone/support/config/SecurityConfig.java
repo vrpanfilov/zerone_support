@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -22,15 +21,13 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
-        .authorizeHttpRequests(r -> r.anyRequest().hasRole("ADMIN"))
+        .authorizeHttpRequests(registry -> registry.anyRequest().hasRole("ADMIN"))
         .authenticationProvider(daoAuthenticationProvider())
-        .formLogin(f ->
-            f.loginPage("/login")
-                .loginProcessingUrl("/login")
-                .permitAll()
-                .successHandler((request, response, authentication) -> response.sendRedirect("/choice"))
-        )
-        .logout(LogoutConfigurer::permitAll);
+        .formLogin(configurer -> configurer
+            .loginPage("/login").permitAll()
+            .successHandler((request, response, authentication) ->
+                response.sendRedirect("/choice"))
+        );
     return http.build();
   }
 

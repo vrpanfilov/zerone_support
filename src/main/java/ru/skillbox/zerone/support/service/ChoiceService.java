@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.skillbox.zerone.support.model.dto.ChoiceDto;
+import ru.skillbox.zerone.support.model.dto.ChoiceListDto;
 import ru.skillbox.zerone.support.model.entity.SupportRequest;
 import ru.skillbox.zerone.support.model.enumerated.SupportRequestStatus;
 import ru.skillbox.zerone.support.repository.SupportRequestRepository;
@@ -20,25 +21,10 @@ public class ChoiceService {
   private final SupportRequestRepository supportRequestRepository;
   private final MailService mailService;
 
-  public List<ChoiceDto> getNewRequests() {
-    List<SupportRequest> requests =
-        supportRequestRepository.findAllByStatusOrderById(SupportRequestStatus.NEW);
-    List<ChoiceDto> choiceDtos = new ArrayList<>();
-    requests.forEach(request -> {
-      ChoiceDto dto = convertRequestEntityToChoiceDto(request);
-      choiceDtos.add(dto);
-    });
-    return choiceDtos;
-  }
-
-  private static ChoiceDto convertRequestEntityToChoiceDto(SupportRequest request) {
-    return ChoiceDto.builder()
-        .id(request.getId())
-        .email(request.getEmail())
-        .fullName(request.getFirstName() + ' ' + request.getLastName())
-        .message(request.getMessage())
-        .createdAt(request.getTime()
-            .format(DateTimeFormatter.ofPattern("dd.MM.yyyy hh:mm:ss")))
+  public ChoiceListDto getChoiceListDto() {
+    List<ChoiceDto> choiceDtos = getNewRequests();
+    return ChoiceListDto.builder()
+        .choiceDtos(choiceDtos)
         .build();
   }
 
@@ -59,6 +45,28 @@ public class ChoiceService {
     supportRequest.setAnswer(choiceDto.getAnswer());
     supportRequestRepository.save(supportRequest);
     sendEmail(supportRequest);
+  }
+
+  private List<ChoiceDto> getNewRequests() {
+    List<SupportRequest> requests =
+        supportRequestRepository.findAllByStatusOrderById(SupportRequestStatus.NEW);
+    List<ChoiceDto> choiceDtos = new ArrayList<>();
+    requests.forEach(request -> {
+      ChoiceDto dto = convertRequestEntityToChoiceDto(request);
+      choiceDtos.add(dto);
+    });
+    return choiceDtos;
+  }
+
+  private ChoiceDto convertRequestEntityToChoiceDto(SupportRequest request) {
+    return ChoiceDto.builder()
+        .id(request.getId())
+        .email(request.getEmail())
+        .fullName(request.getFirstName() + ' ' + request.getLastName())
+        .message(request.getMessage())
+        .createdAt(request.getTime()
+            .format(DateTimeFormatter.ofPattern("dd.MM.yyyy hh:mm:ss")))
+        .build();
   }
 
   private void sendEmail(SupportRequest supportRequest) {
