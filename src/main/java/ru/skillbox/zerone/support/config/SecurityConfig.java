@@ -3,49 +3,34 @@ package ru.skillbox.zerone.support.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import ru.skillbox.zerone.support.service.UserDetailsServiceImpl;
 
 @Configuration
-@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
   private final PasswordEncoder passwordEncoder;
-  private final UserDetailsServiceImpl userDetailsService;
+  private final UserDetailsService userDetailsService;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http.authorizeRequests()
-        .anyRequest()
-        .authenticated()
-
-//        .and()
-//        .formLogin()
-//        .loginPage("/login")
-//        .permitAll()
-//        .defaultSuccessUrl("/choice", true)
-//
-//        .and()
-//        .logout()
-//        .logoutUrl("/logout")
-//        .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "GET")) // https://docs.spring.io/spring-security/site/docs/4.2.12.RELEASE/apidocs/org/springframework/security/config/annotation/web/configurers/LogoutConfigurer.html
-//        .clearAuthentication(true)
-//        .invalidateHttpSession(true)
-//        .deleteCookies("JSESSIONID")
-//        .logoutSuccessUrl("/login")
-
-        .and()
+    http
+        .csrf(AbstractHttpConfigurer::disable)
+        .authorizeHttpRequests(r -> r.anyRequest().hasRole("ADMIN"))
         .authenticationProvider(daoAuthenticationProvider())
-        .formLogin(Customizer.withDefaults())
-        .httpBasic();
+        .formLogin(f ->
+            f.loginPage("/login")
+                .loginProcessingUrl("/login")
+                .permitAll()
+                .successHandler((request, response, authentication) -> response.sendRedirect("/choice"))
+        )
+        .logout(LogoutConfigurer::permitAll);
     return http.build();
   }
 
